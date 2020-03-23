@@ -1,0 +1,26 @@
+POST http://localhost:8003/api/tokens
+Content-Type: application/json
+
+{
+  "login": "moderator",
+  "password": "moderator"
+}
+
+### get user profile
+GET http://localhost:8003/api/users/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibG9naW4iOiJtb2RlcmF0b3IiLCJyb2xlIjoiTU9ERVJBVE9SIiwiZXhwIjoxNTg0OTc5NjUzfQ.PB-jRlxUKzFQeMyYRMgRozI3JeUdVIP-ZzE6xHMoSk8
+
+### Add user to db
+POST http://localhost:8003/api/users
+Content-Type: application/json
+
+{
+  "id": 0,
+  "name": "Vasya",
+  "surname": "Petrov",
+  "login": "vasya",
+  "password": "secret",
+  "avatar": "https://i.pravatar.cc/50"
+}
+
+###
