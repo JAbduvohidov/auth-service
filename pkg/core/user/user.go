@@ -1,16 +1,11 @@
 package user
 
 import (
-	"auth-service/pkg/core/token"
 	"context"
-	"errors"
 	"fmt"
-	"github.com/JAbduvohidov/mux/middleware/jwt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var ErrStructType = errors.New("incorrect struct type")
 
 type Service struct {
 	pool *pgxpool.Pool
@@ -31,34 +26,83 @@ type RequestDTO struct {
 	Name     string `json:"name"`
 	Surname  string `json:"surname"`
 	Login    string `json:"login"`
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
+	Role     string `json:"role"`
 	Avatar   string `json:"avatar"`
 }
 
-func (s *Service) Profile(ctx context.Context) (response ResponseDTO, err error) {
-	auth, ok := jwt.FromContext(ctx).(*token.Payload)
-	if !ok {
-		return ResponseDTO{}, ErrStructType
+func (s *Service) GetProfile(ctx context.Context) (response RequestDTO, err error) {
+	err = s.pool.QueryRow(ctx, getUserDML, ctx.Value("id")).Scan(&response.Id, &response.Name, &response.Surname, &response.Login, &response.Avatar)
+	if err != nil {
+		return RequestDTO{}, fmt.Errorf("unable to get user info: %w", err)
+	}
+	return
+}
+
+func (s *Service) EditProfile(ctx context.Context, user *RequestDTO) (err error) {
+	_, err = s.pool.Exec(ctx, updateUserProfileDML, user.Name, user.Surname, ctx.Value("id"))
+	if err != nil {
+		return fmt.Errorf("unable to update user info: %w", err)
 	}
 
-	return ResponseDTO{
-		Id:    auth.Id,
-		Login: auth.Login,
-		Role:  auth.Role,
-	}, nil
+	if user.Password == "" {
+		return
+	}
+
+	hPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	_, err = s.pool.Exec(ctx, updateUserPasswordDML, hPassword, ctx.Value("id"))
+	if err != nil {
+		return fmt.Errorf("unable to update user password: %w", err)
+	}
+	return
 }
 
 func (s *Service) AddUser(ctx context.Context, request RequestDTO) (err error) {
-	conn, err := s.pool.Acquire(ctx)
-	if err != nil {
-		return fmt.Errorf("unable to acquire ctx: %w", err)
-	}
-
 	hPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 
-	_, err = conn.Exec(ctx, addUserDML, request.Name, request.Surname, request.Login, hPassword, request.Avatar)
+	_, err = s.pool.Exec(ctx, addUserDML, request.Name, request.Surname, request.Login, hPassword, request.Avatar)
 	if err != nil {
 		return fmt.Errorf("unable to add user: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) GetUsers(ctx context.Context) (users []*RequestDTO, err error) {
+	rows, err := s.pool.Query(ctx, getUsersDML)
+	if err != nil {
+		return users, fmt.Errorf("unable to get users: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		user := RequestDTO{}
+		err := rows.Scan(
+			&user.Id,
+			&user.Name,
+			&user.Surname,
+			&user.Login,
+			&user.Role,
+			&user.Avatar,
+		)
+		if err != nil {
+			return users, fmt.Errorf("unable to scan user: %w", err)
+		}
+		users = append(users, &user)
+	}
+	return
+}
+
+func (s *Service) DeleteUser(ctx context.Context, id int) (err error) {
+	_, err = s.pool.Exec(ctx, deleteUserDML, id)
+	if err != nil {
+		return fmt.Errorf("unable to delete user: %w", err)
+	}
+	return
+}
+
+func (s *Service) UpgradeUser(ctx context.Context, role string, id int) (err error) {
+	_, err = s.pool.Exec(ctx, upgradeUserDML, role, id)
+	if err != nil {
+		return fmt.Errorf("unable to upgrade user: %w", err)
+	}
+	return
 }

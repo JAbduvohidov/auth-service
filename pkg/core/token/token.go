@@ -19,13 +19,9 @@ func NewService(secret jwt.Secret, pool *pgxpool.Pool) *Service {
 	return &Service{secret: secret, pool: pool}
 }
 
-var (
-	ROLE_USER  = "USER"
-	ROLE_ADMIN = "ADMIN"
-)
-
 type Payload struct {
 	Id    int64  `json:"id"`
+	Name  string `json:"name"`
 	Login string `json:"login"`
 	Role  string `json:"role"`
 	Exp   int64  `json:"exp"`
@@ -40,7 +36,7 @@ type ResponseDTO struct {
 	Token string `json:"token"`
 }
 
-var ErrInvalidLogin = errors.New("invalid password")
+var ErrInvalidLogin = errors.New("invalid login")
 var ErrInvalidPassword = errors.New("invalid password")
 
 func (s *Service) Generate(ctx context.Context, request *RequestDTO) (response ResponseDTO, err error) {
@@ -53,7 +49,7 @@ func (s *Service) Generate(ctx context.Context, request *RequestDTO) (response R
 
 	var userPayload Payload
 	var hPassword string
-	err = row.Scan(&userPayload.Id, &userPayload.Login, &hPassword, &userPayload.Role)
+	err = row.Scan(&userPayload.Id, &userPayload.Name, &userPayload.Login, &hPassword, &userPayload.Role)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			err = ErrInvalidLogin

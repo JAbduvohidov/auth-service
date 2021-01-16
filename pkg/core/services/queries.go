@@ -13,4 +13,4 @@ const usersDDL = `CREATE TABLE IF NOT EXISTS users
 );`
 
 const moderatorDML = `INSERT INTO users (id, name, surname, login, password, avatar, role)
-VALUES (1, 'Moderator', 'Moderator', 'moderator', 'moderator', 'https://i.pravatar.cc/50', 'MODERATOR') ON CONFLICT DO NOTHING;`
+VALUES (1, 'Moderator', 'Moderator', 'moderator', $1, '', 'MODERATOR') ON CONFLICT DO NOTHING;`

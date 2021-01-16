@@ -22,6 +22,7 @@ var (
 	portF   = flag.String("port", "", "Server port")
 	secretF = flag.String("secret", "", "Server secret")
 	dsnF    = flag.String("dsn", "", "Postgres DSN")
+	mPassF  = flag.String("mpass", "", "Moderators password")
 )
 
 var (
@@ -29,6 +30,7 @@ var (
 	EPORT   = "PORT"
 	ESECRET = "SECRET"
 	EDSN    = "DATABASE_URL"
+	EMPASS  = "MODERATOR_PASS"
 )
 
 type DSN string
@@ -52,15 +54,19 @@ func main() {
 	if !ok {
 		log.Panic("can't get dsn")
 	}
+	mPass, ok := FlagOrEnv(*mPassF, EMPASS)
+	if !ok {
+		log.Panic("can't get moderators pass")
+	}
 
 	addr := net.JoinHostPort(host, port)
 
-	start(addr, dsn, jwt.Secret(secret))
+	start(addr, dsn, jwt.Secret(secret), mPass)
 }
 
-func start(addr string, dsn string, secret jwt.Secret) {
+func start(addr string, dsn string, secret jwt.Secret, mPass string) {
 
-	err := services.InitDB(dsn)
+	err := services.InitDB(dsn, mPass)
 	if err != nil {
 		panic(err)
 	}
